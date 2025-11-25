@@ -1,0 +1,1 @@
+'''This package stores and updates market indices data.'''
