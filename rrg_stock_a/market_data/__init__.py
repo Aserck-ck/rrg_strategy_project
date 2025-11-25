@@ -1,0 +1,1 @@
+'''This package stores and updates Chinese market data.'''
