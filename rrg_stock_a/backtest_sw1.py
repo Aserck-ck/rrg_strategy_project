@@ -73,8 +73,8 @@ def calculate_performance_metrics_with_costs_included(strategy_net, benchmark_ne
     annualized_benchmark_vol = benchmark_returns.std() * np.sqrt(trading_days)
 
     # 夏普比率
-    strategy_sharpe = (annualized_strategy_return - risk_free_rate) / annualized_strategy_vol
-    benchmark_sharpe = (annualized_benchmark_return - risk_free_rate) / annualized_benchmark_vol
+    strategy_sharpe = annualized_strategy_return / annualized_strategy_vol
+    benchmark_sharpe = annualized_benchmark_return / annualized_benchmark_vol
 
     # 最大回撤
     def calculate_max_drawdown(net_values):
@@ -245,11 +245,14 @@ def plot_result(benchmark):
         textstr = '\n'.join([
             f'年化收益(含成本): {metrics["年化收益-策略"]}',
             f'年化收益(基准): {metrics["年化收益-基准"]}',
-            f'夏普比率(含成本): {metrics["夏普比率-策略"]}',
-            f'最大回撤(含成本): {metrics["最大回撤-策略"]}',
+            f'年化超额收益: {metrics["年化超额收益"]} ',
+            f'年化波动-策略: {metrics["年化波动-策略"]}',
+            f'年化波动-基准: {metrics["年化波动-基准"]}',
+            f'夏普比率-策略: {metrics["夏普比率-策略"]}',
+            f'最大回撤-策略: {metrics["最大回撤-策略"]}',
+            f'最大回撤-基准: {metrics["最大回撤-基准"]}',
             f'Alpha: {metrics["Alpha"]}, Beta: {metrics["Beta"]}',
             f'年化换手率: {metrics["年化换手率"]}',
-            f'总交易成本: {metrics["总交易成本"]}',
             f'成本对收益影响: {metrics["交易成本对收益影响"]}'
         ])
 
@@ -577,16 +580,16 @@ class BackTest(object):
 steps=2
 x_pred_df = pd.read_csv(f'./analyse/sw1_x_pred_mean{steps}_weekly.csv',index_col=0,parse_dates=True)
 y_pred_df = pd.read_csv(f'./analyse/sw1_y_pred_mean{steps}_weekly.csv',index_col=0,parse_dates=True)
-x_pred_df1 = pd.read_csv(f'./analyse/x_pred_mean{steps}_weekly.csv',index_col=0,parse_dates=True)
-y_pred_df1 = pd.read_csv(f'./analyse/y_pred_mean{steps}_weekly.csv',index_col=0,parse_dates=True)
-x_pred_df2 = pd.read_csv(f'./analyse/x_pred{steps}_weekly.csv',index_col=0,parse_dates=True)
-y_pred_df2 = pd.read_csv(f'./analyse/y_pred{steps}_weekly.csv',index_col=0,parse_dates=True)
-x_pred_df3 = pd.read_csv(f'./analyse/x_pred_walk_forward.csv',index_col=0,parse_dates=True)
-y_pred_df3 = pd.read_csv(f'./analyse/y_pred_walk_forward.csv',index_col=0,parse_dates=True)
-x_pred_df4 = pd.read_csv(f'./analyse/rolling/stack_rg_x_pred3_walk_forward.csv',index_col=0,parse_dates=True)
-y_pred_df4 = pd.read_csv(f'./analyse/rolling/stack_rg_y_pred3_walk_forward.csv',index_col=0,parse_dates=True)
-x_pred_df5 = pd.read_csv(f'./analyse/rolling/stack_rg_x_pred2_walk_forward.csv',index_col=0,parse_dates=True)
-y_pred_df5 = pd.read_csv(f'./analyse/rolling/stack_rg_y_pred2_walk_forward.csv',index_col=0,parse_dates=True)
+# x_pred_df1 = pd.read_csv(f'./analyse/x_pred_mean{steps}_weekly.csv',index_col=0,parse_dates=True)
+# y_pred_df1 = pd.read_csv(f'./analyse/y_pred_mean{steps}_weekly.csv',index_col=0,parse_dates=True)
+# x_pred_df2 = pd.read_csv(f'./analyse/x_pred{steps}_weekly.csv',index_col=0,parse_dates=True)
+# y_pred_df2 = pd.read_csv(f'./analyse/y_pred{steps}_weekly.csv',index_col=0,parse_dates=True)
+# x_pred_df3 = pd.read_csv(f'./analyse/x_pred_walk_forward.csv',index_col=0,parse_dates=True)
+# y_pred_df3 = pd.read_csv(f'./analyse/y_pred_walk_forward.csv',index_col=0,parse_dates=True)
+x_pred_df4 = pd.read_csv(f'./analyse/rolling/stack_rg_x_pred3_walk_forward_256.csv',index_col=0,parse_dates=True)
+y_pred_df4 = pd.read_csv(f'./analyse/rolling/stack_rg_y_pred3_walk_forward_256.csv',index_col=0,parse_dates=True)
+x_pred_df5 = pd.read_csv(f'./analyse/rolling/stack_rg_x_pred2_walk_forward_256.csv',index_col=0,parse_dates=True)
+y_pred_df5 = pd.read_csv(f'./analyse/rolling/stack_rg_y_pred2_walk_forward_256.csv',index_col=0,parse_dates=True)
 # x_pred_df = pd.read_csv(f'./analyse/x_pred_single_lstm_weekly.csv',index_col=0,parse_dates=True)
 # y_pred_df = pd.read_csv(f'./analyse/y_pred_single_lstm_weekly.csv',index_col=0,parse_dates=True)
 
@@ -615,12 +618,12 @@ debt = pd.read_csv('511010.SH.csv',index_col=0,parse_dates=True)
 close_df['000300.SH'] = hs300['close']
 close_df['511010.SH'] = debt['close']
 close_df=close_df.dropna()
-print(close_df)
+
 amt_df['000300.SH'] = hs300['amount']
 amt_df=amt_df.dropna()
 start_date = x_pred_df.index[0]
 end_date = x_pred_df.index[-2]
-close_weekly_df = close_df.resample('W-FRI').ffill().query('trade_date >= @start_date & trade_date <= @end_date')
+close_weekly_df = close_df.resample('W-FRI').last().dropna().query('trade_date >= @start_date & trade_date <= @end_date')
 # spx_df = close_df.query('trade_date >= @start_date & trade_date <= @end_date')
 
 pct_change_df = close_weekly_df.pct_change().dropna()
