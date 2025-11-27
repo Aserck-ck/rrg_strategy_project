@@ -384,10 +384,10 @@ class BackTest(object):
         self.strategy_name = 'Buy when in the second quadrant'
         ratio_w_smooth = self.ratio_weekly_df.rolling(3, min_periods=1).mean()
         momentum_w_smooth = self.momentum_weekly_df.rolling(3, min_periods=1).mean()
-        rank_start= 5
+        rank_start= 1
         rank_end = 15
         rank_diff = 10
-        rank_start_p = 1
+        rank_start_p = 5
         rank_end_p = 15
         rank_diff_p =10
         # 修正循环逻辑
@@ -477,32 +477,44 @@ class BackTest(object):
                         (self.ratio_weekly_df.loc[current_date] - self.ratio_weekly_df.loc[prev_date]).median(), 1)
 
                      # 预测值 (Prediction)
-                    momentum_p = momentum_df.loc[prev_date]
-                    ratio_p = ratio_df.loc[prev_date]
+                    momentum_p = momentum_df.loc[current_date]
+                    ratio_p = ratio_df.loc[current_date]
                     top_momentum_p_idx = momentum_p.sort_values(ascending=False).iloc[rank_start_p:rank_end_p].index
                     top_ratio_p_idx = ratio_p.sort_values(ascending=False).iloc[rank_start_p:rank_end_p].index
                     condition7 = momentum_p.index.isin(top_momentum_p_idx) & ratio_p.index.isin(top_ratio_p_idx)
 
-                    momentum_diff_p = momentum_df.loc[prev_date] - momentum_df.loc[prev_prev_date]
-                    ratio_diff_p = ratio_df.loc[prev_date] - ratio_df.loc[prev_prev_date]
+                    momentum_diff_p = momentum_df.loc[current_date] - momentum_df.loc[prev_date]
+                    ratio_diff_p = ratio_df.loc[current_date] - ratio_df.loc[prev_date]
                     top_momentum_diff_p_idx = momentum_diff_p.sort_values(ascending=False).iloc[:rank_diff_p].index
                     top_ratio_diff_p_idx = ratio_diff_p.sort_values(ascending=False).iloc[:rank_end_p].index
                     condition8 = momentum_diff_p.index.isin(top_momentum_diff_p_idx) & (momentum_diff_p >= 1)
                     condition9 = ratio_diff_p.index.isin(top_ratio_diff_p_idx) & (ratio_diff_p >= 1)
 
                     # 历史值 (Lagging)
-                    momentum_l = self.momentum_weekly_df.loc[prev_date]
-                    ratio_l = self.ratio_weekly_df.loc[prev_date]
-                    top_momentum_l_idx = momentum_l.sort_values(ascending=False).iloc[rank_start:rank_end].index
-                    top_ratio_l_idx = ratio_l.sort_values(ascending=False).iloc[rank_start:rank_end].index
-                    condition7l = momentum_l.index.isin(top_momentum_l_idx) & ratio_l.index.isin(top_ratio_l_idx)
+                    momentum_p = momentum_df.loc[prev_date]
+                    ratio_p = ratio_df.loc[prev_date]
+                    top_momentum_p_idx = momentum_p.sort_values(ascending=False).iloc[rank_start:rank_end].index
+                    top_ratio_p_idx = ratio_p.sort_values(ascending=False).iloc[rank_start:rank_end].index
+                    condition7l = momentum_p.index.isin(top_momentum_p_idx) & ratio_p.index.isin(top_ratio_p_idx)
 
-                    momentum_diff_l = self.momentum_weekly_df.loc[prev_date] - self.momentum_weekly_df.loc[prev_prev_date]
-                    ratio_diff_l = self.ratio_weekly_df.loc[prev_date] - self.ratio_weekly_df.loc[prev_prev_date]
-                    top_momentum_diff_l_idx = momentum_diff_l.sort_values(ascending=False).iloc[:rank_diff].index
-                    top_ratio_diff_l_idx = ratio_diff_l.sort_values(ascending=False).iloc[:rank_end].index
-                    condition8l = momentum_diff_l.index.isin(top_momentum_diff_l_idx) & (momentum_diff_l >= 1)
-                    condition9l = ratio_diff_l.index.isin(top_ratio_diff_l_idx) & (ratio_diff_l >= 1)
+                    momentum_diff_p = momentum_df.loc[prev_date] - momentum_df.loc[prev_prev_date]
+                    ratio_diff_p = ratio_df.loc[prev_date] - ratio_df.loc[prev_prev_date]
+                    top_momentum_diff_p_idx = momentum_diff_p.sort_values(ascending=False).iloc[:rank_diff].index
+                    top_ratio_diff_p_idx = ratio_diff_p.sort_values(ascending=False).iloc[:rank_end].index
+                    condition8l = momentum_diff_p.index.isin(top_momentum_diff_p_idx) & (momentum_diff_p >= 1)
+                    condition9l = ratio_diff_p.index.isin(top_ratio_diff_p_idx) & (ratio_diff_p >= 1)
+                    # momentum_l = self.momentum_weekly_df.loc[prev_date]
+                    # ratio_l = self.ratio_weekly_df.loc[prev_date]
+                    # top_momentum_l_idx = momentum_l.sort_values(ascending=False).iloc[rank_start:rank_end].index
+                    # top_ratio_l_idx = ratio_l.sort_values(ascending=False).iloc[rank_start:rank_end].index
+                    # condition7l = momentum_l.index.isin(top_momentum_l_idx) & ratio_l.index.isin(top_ratio_l_idx)
+
+                    # momentum_diff_l = self.momentum_weekly_df.loc[prev_date] - self.momentum_weekly_df.loc[prev_prev_date]
+                    # ratio_diff_l = self.ratio_weekly_df.loc[prev_date] - self.ratio_weekly_df.loc[prev_prev_date]
+                    # top_momentum_diff_l_idx = momentum_diff_l.sort_values(ascending=False).iloc[:rank_diff].index
+                    # top_ratio_diff_l_idx = ratio_diff_l.sort_values(ascending=False).iloc[:rank_end].index
+                    # condition8l = momentum_diff_l.index.isin(top_momentum_diff_l_idx) & (momentum_diff_l >= 1)
+                    # condition9l = ratio_diff_l.index.isin(top_ratio_diff_l_idx) & (ratio_diff_l >= 1)
 
                     combined_condition1 = condition1 & condition2 & condition3
                     combined_condition1l = condition1l & condition2l & condition3l
@@ -516,7 +528,7 @@ class BackTest(object):
 
                     # combined_condition =  (combined_condition2 & combined_condition2l) | (combined_condition3 | combined_condition3l)
                     # combined_condition = combined_condition3 | combined_condition2
-                    combined_condition = combined_condition3
+                    combined_condition = combined_condition3l 
 
                     # 将当前模型的条件并入最终条件
                     final_combined_condition = final_combined_condition | combined_condition
@@ -584,14 +596,14 @@ y_pred_df = pd.read_csv(f'./analyse/sw1_y_pred_mean{steps}_weekly.csv',index_col
 # y_pred_df1 = pd.read_csv(f'./analyse/y_pred_mean{steps}_weekly.csv',index_col=0,parse_dates=True)
 # x_pred_df2 = pd.read_csv(f'./analyse/x_pred{steps}_weekly.csv',index_col=0,parse_dates=True)
 # y_pred_df2 = pd.read_csv(f'./analyse/y_pred{steps}_weekly.csv',index_col=0,parse_dates=True)
-# x_pred_df3 = pd.read_csv(f'./analyse/x_pred_walk_forward.csv',index_col=0,parse_dates=True)
-# y_pred_df3 = pd.read_csv(f'./analyse/y_pred_walk_forward.csv',index_col=0,parse_dates=True)
-x_pred_df4 = pd.read_csv(f'./analyse/rolling/stack_rg_x_pred3_walk_forward_256.csv',index_col=0,parse_dates=True)
-y_pred_df4 = pd.read_csv(f'./analyse/rolling/stack_rg_y_pred3_walk_forward_256.csv',index_col=0,parse_dates=True)
-x_pred_df5 = pd.read_csv(f'./analyse/rolling/stack_rg_x_pred2_walk_forward_256.csv',index_col=0,parse_dates=True)
-y_pred_df5 = pd.read_csv(f'./analyse/rolling/stack_rg_y_pred2_walk_forward_256.csv',index_col=0,parse_dates=True)
-# x_pred_df = pd.read_csv(f'./analyse/x_pred_single_lstm_weekly.csv',index_col=0,parse_dates=True)
-# y_pred_df = pd.read_csv(f'./analyse/y_pred_single_lstm_weekly.csv',index_col=0,parse_dates=True)
+x_pred_df3 = pd.read_csv(f'./analyse/rolling/stack_rg_x_pred1_walk_forward_360.csv',index_col=0,parse_dates=True)
+y_pred_df3 = pd.read_csv(f'./analyse/rolling/stack_rg_y_pred1_walk_forward_360.csv',index_col=0,parse_dates=True)
+x_pred_df4 = pd.read_csv(f'./analyse/rolling/stack_rg_x_pred2_walk_forward_256.csv',index_col=0,parse_dates=True)
+y_pred_df4 = pd.read_csv(f'./analyse/rolling/stack_rg_y_pred2_walk_forward_256.csv',index_col=0,parse_dates=True)
+x_pred_df5 = pd.read_csv(f'./analyse/rolling/stack_rg_x_pred3_walk_forward_320.csv',index_col=0,parse_dates=True)
+y_pred_df5 = pd.read_csv(f'./analyse/rolling/stack_rg_y_pred3_walk_forward_320.csv',index_col=0,parse_dates=True)
+x_pred_df6 = pd.read_csv(f'./analyse/x_pred_autoregressive_256_gru_rolling.csv',index_col=0,parse_dates=True)
+y_pred_df6 = pd.read_csv(f'./analyse/y_pred_autoregressive_256_gru_rolling.csv',index_col=0,parse_dates=True)
 
 from market_data.sw_level1.sw_level1_jdk_functions import get_sw_level1_ratio,get_sw_level1_momentum
 from market_data.sw_level1.sw_level1_crowdedness_functions import get_sw_level1_rank,get_sw_level1_percentile
@@ -621,8 +633,8 @@ close_df=close_df.dropna()
 
 amt_df['000300.SH'] = hs300['amount']
 amt_df=amt_df.dropna()
-start_date = x_pred_df.index[0]
-end_date = x_pred_df.index[-2]
+start_date = momentum_w_df.index[-800]
+end_date = momentum_w_df.index[-2]
 close_weekly_df = close_df.resample('W-FRI').last().dropna().query('trade_date >= @start_date & trade_date <= @end_date')
 # spx_df = close_df.query('trade_date >= @start_date & trade_date <= @end_date')
 
@@ -636,16 +648,15 @@ start_date1 = x_pred_df.index[-345]
 # y_pred = [y_pred_df3+100,y_pred_df4+100]
 # x_pred = [x_pred_df+100,x_pred_df3+100]
 # y_pred = [y_pred_df+100,y_pred_df3+100]
-x_pred = [x_pred_df4+100,x_pred_df5+100]
-y_pred = [y_pred_df4+100,y_pred_df5+100]
-# x_pred = [x_pred_df5+100]
-# y_pred = [y_pred_df5+100]
-
+# x_pred = [x_pred_df4+100, x_pred_df5+100]
+# y_pred = [y_pred_df4+100, y_pred_df5+100]
+x_pred = [x_pred_df6+100]
+y_pred = [y_pred_df6+100]
+print(start_date1,end_date)
 
 test = BackTest(start_date1, end_date, x_pred,y_pred
                 , ratio_w_df, momentum_w_df, pct_change_df, '511010.SH')
 test.strategy_net_value()
 test.benchmark_net_value()
-
 
 plot_result('000300.SH')

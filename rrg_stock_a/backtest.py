@@ -379,7 +379,7 @@ class BackTest(object):
         )
         self.portfolios[self.backup] = 0
         self.strategy_name = 'Buy when in the second quadrant'
-        rank_start = 5
+        rank_start = 1
         rank_end = 15
         rank_diff = 10
         rank_start_p = 5

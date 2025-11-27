@@ -606,6 +606,126 @@ def prepare_sw1_backtest_weekly(lookback_window, predict_window,
 
     return train_dataset
 
+def prepare_sw1_predict_weekly(lookback_window, predict_window,
+                                z_score_feature, log_feature, origin_feature, stamp_feature,
+                                dataset='sw1'):
+
+
+    if dataset =='sw1':
+        ratio_df = get_sw_level1_ratio(ts_code='all', frequency='weekly').set_index('trade_date')
+        momentum_df = get_sw_level1_momentum(ts_code='all', frequency='weekly').set_index('trade_date')
+        rank_df = get_sw_level1_rank(ts_code='all',frequency='weekly').set_index('trade_date')
+        num_ind=31
+        ts_codes = get_sw_level1_codes()
+        get_sw_data_func = get_sw_level1_data
+    elif dataset =='sw2':
+        ratio_df = get_sw_level2_ratio(ts_code='all', frequency='weekly').set_index('trade_date')
+        momentum_df = get_sw_level2_momentum(ts_code='all', frequency='weekly').set_index('trade_date')
+        rank_df = get_sw_level2_rank(ts_code='all',frequency='weekly').set_index('trade_date')
+        num_ind=124
+        ts_codes = get_sw_level2_codes()
+        get_sw_data_func = get_sw_level2_data
+    else:
+        raise ValueError("dataset参数错误，仅支持'sw1'或'sw2'")
+    
+    ratio_df.drop(columns=['000300.SH'], inplace=True)
+    momentum_df.drop(columns=['000300.SH'], inplace=True)
+    
+    hs300 = get_market_index_data('000300.SH').set_index('trade_date')
+    hs300 = hs300['close']
+    close_df = pd.DataFrame(index=hs300.index, columns=ts_codes)
+    for i, ts_code in enumerate(ts_codes):
+        index_df = get_sw_data_func(ts_code).set_index('trade_date')
+        close_df[ts_code] = index_df['close']
+
+    close_df = close_df.resample('W-FRI').ffill()
+    hs300_w = hs300.resample('W-FRI').ffill()
+    close_df = (close_df - close_df.shift(predict_window)) / close_df.shift(predict_window)
+    hs300_w = (hs300_w - hs300_w.shift(predict_window)) / hs300_w.shift(predict_window)
+    close5_df = pd.DataFrame(index=close_df.index, columns=close_df.columns)
+    for col in close_df.columns:
+        close5_df[col] = (close_df[col] - hs300_w) * 100 - 100
+
+    close5_df = close5_df.dropna()
+
+    close_rank_df = (1 - close5_df.rank(axis=1, method='min', ascending=False) / num_ind)
+    row_min = close5_df.min(axis=1)
+    row_max = close5_df.max(axis=1)
+
+    relative_return_df = close5_df.copy()
+    for idx in close5_df.index:
+        r_min = row_min[idx]
+        r_max = row_max[idx]
+
+        # 如果所有收益率相同，设为0
+        if r_max == r_min:
+            relative_return_df.loc[idx] = 0
+        else:
+            # 分别处理正收益率和负收益率
+            day_returns = close5_df.loc[idx]
+
+            # 找到正收益率的最大值和负收益率的最小值
+            positive_returns = day_returns[day_returns > 0]
+            negative_returns = day_returns[day_returns < 0]
+
+            # 如果有正收益率
+            if len(positive_returns) > 0:
+                pos_max = positive_returns.max()
+                # 正收益率缩放到(0, 1]
+                positive_mask = day_returns > 0
+                relative_return_df.loc[idx, positive_mask] = day_returns[positive_mask] / pos_max
+
+            # 如果有负收益率
+            if len(negative_returns) > 0:
+                neg_min = negative_returns.min()
+                # 负收益率缩放到[-1, 0)
+                negative_mask = day_returns < 0
+                relative_return_df.loc[idx, negative_mask] = day_returns[negative_mask] / abs(neg_min)
+
+            # 收益率为0的设为0
+            zero_mask = day_returns == 0
+            relative_return_df.loc[idx, zero_mask] = 0
+
+    ratio_chg1_df = (ratio_df-ratio_df.shift(1))/ratio_df.shift(1)
+    ratio_chg5_df = (ratio_df-ratio_df.shift(predict_window))/ratio_df.shift(predict_window)
+    momentum_chg1_df = (momentum_df - momentum_df.shift(1)) / momentum_df.shift(1)
+    momentum_chg5_df = (momentum_df - momentum_df.shift(predict_window)) / momentum_df.shift(predict_window)
+
+    distance_df = np.sqrt((ratio_df-100)**2+(momentum_df-100)**2)
+    radius_df = np.arctan2(momentum_df - 100, ratio_df - 100)
+
+    distance5_df = np.sqrt((ratio_chg5_df*100) ** 2 + (momentum_chg5_df*100) ** 2)
+    radius5_df = np.arctan2(momentum_chg5_df*100, ratio_chg5_df*100)
+
+    ratio_df = ratio_df-100
+    momentum_df = momentum_df-100
+
+    
+
+    radius5_sin_df = np.sin(radius5_df)
+    radius5_cos_df = np.cos(radius5_df)
+
+    data_list = [ratio_df, momentum_df, distance5_df, radius5_cos_df, radius5_sin_df,
+                 ratio_chg5_df, momentum_chg5_df, rank_df, close5_df, radius5_df,
+                 relative_return_df, close_rank_df, radius_df, distance_df]
+    data_length = len(momentum_chg5_df.dropna())
+    for data in data_list:
+        data_length = min(data_length, len(data.dropna()))
+        
+    bound_all = data_length
+    train_list = [x.iloc[-bound_all:] for x in data_list]
+
+    feature_list = ['ratio', 'momentum', 'distance5', 'cos', 'sin',
+                    'ratio_chg5', 'momentum_chg5', 'rank', 'close5', 'radius5',
+                    'relative', 'close_rank', 'radius', 'distance']
+
+    train_data = {x: y for _, (x, y) in enumerate(zip(feature_list,train_list))}
+
+    train_dataset = SWDataset(train_data, lookback_window, 0,
+                              z_score_feature, log_feature, origin_feature, stamp_feature)
+
+    return train_dataset
+
 def prepare_sw1_predict_dataset(lookback_window, z_score_feature, log_feature, origin_feature, stamp_feature):
     ratio_df = get_sw_level1_ratio(ts_code='all', frequency='daily').set_index('trade_date')
     momentum_df = get_sw_level1_momentum(ts_code='all', frequency='daily').set_index('trade_date')
